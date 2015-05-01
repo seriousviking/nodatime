@@ -180,7 +180,8 @@ namespace NodaTime.TimeZones.IO
             internal void HandleSupplementalWindowsZonesField(TzdbStreamField field)
             {
                 CheckSingleField(field, windowsMapping);
-                windowsMapping = field.ExtractSingleValue(WindowsZones.Read, stringPool);
+                // Modified by Artem Suravikin
+                windowsMapping = field.ExtractSingleValue<WindowsZones>(WindowsZones.Read, stringPool);
             }
 
             internal void HandleWindowsAdditionalStandardNameToIdMappingField(TzdbStreamField field)

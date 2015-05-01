@@ -157,15 +157,27 @@ namespace NodaTime.TimeZones
             return new TzdbDateTimeZoneSource(TzdbStreamData.FromStream(stream));
         }
 
+        private static int CompareKeys(KeyValuePair<string, string> left, KeyValuePair<string, string> right)
+        {
+            return string.Compare(left.Key, right.Key);
+        }
+
         private TzdbDateTimeZoneSource(ITzdbDataSource source)
         {
             Preconditions.CheckNotNull(source, "source");
             this.source = source;
             timeZoneIdMap = new NodaReadOnlyDictionary<string, string>(source.TzdbIdMap);
-            aliases = timeZoneIdMap
-                .Where(pair => pair.Key != pair.Value)
-                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
-                .ToLookup(pair => pair.Value, pair => pair.Key);
+            // Modified by Artem Suravikin to make it work on Mono with --aot option
+            var aliasesWhere = timeZoneIdMap.Where<KeyValuePair<string, string>>(pair => pair.Key != pair.Value);
+            var aliasesOrdered = aliasesWhere.OrderBy<KeyValuePair<string, string>, string>(pair => pair.Key, StringComparer.Ordinal);
+
+            var aliasesWhereList = aliasesWhere.ToList<KeyValuePair<string, string>>();
+            aliasesWhereList.Sort(CompareKeys);
+            aliases = aliasesWhereList.ToLookup<KeyValuePair<string, string>, string, string>(pair => pair.Value, pair => pair.Key);
+            //aliases = timeZoneIdMap
+            //    .Where(pair => pair.Key != pair.Value)
+            //    .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            //    .ToLookup(pair => pair.Value, pair => pair.Key);
             version = source.TzdbVersion + " (mapping: " + source.WindowsMapping.Version + ")";
             var originalZoneLocations = source.ZoneLocations;
             zoneLocations = originalZoneLocations == null ? null : new ReadOnlyCollection<TzdbZoneLocation>(originalZoneLocations);
